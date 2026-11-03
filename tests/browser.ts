@@ -7,7 +7,7 @@ try {
   const page = await browser.newPage();
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
-  await page.goto("http://127.0.0.1:4173");
+  await page.goto("http://127.0.0.1:4173/engine.html");
   for (const [constraint, expected] of [
     ["x <= 1", "Optimal"],
     ["x >= 2", "Infeasible"],

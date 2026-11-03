@@ -1,3 +1,5 @@
 node_modules/
 dist/
 test-results/
+reports/preview-*.txt
+reports/screenshots/*debug*

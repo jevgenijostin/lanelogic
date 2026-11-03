@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "tsx tests/gates.ts",
-    "test:browser": "tsx tests/browser.ts"
+    "test:browser": "tsx tests/browser.ts",
+    "test:ui": "tsx tests/ui-unit.ts",
+    "test:ui:browser": "tsx tests/ui-browser.ts"
   },
   "dependencies": {
     "highs": "1.15.4"
