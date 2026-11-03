@@ -1,5 +1,5 @@
 import "./style.css";
-import { parseTime, importCSV } from "./parsing";
+import { parseTime, formatTime, importCSV } from "./parsing";
 import { LANE_ORDER } from "./seeding";
 import { canUse } from "./features";
 import {
@@ -208,6 +208,7 @@ window.addEventListener("hashchange", () => {
 app.addEventListener("click", async (event) => {
   const el = (event.target as HTMLElement).closest<HTMLButtonElement>("button");
   if (!el || el.disabled) return;
+  if (el.type === "submit" && el.closest("form")) return;
   try {
     if (el.id === "ping") {
       pingCount++;
@@ -359,7 +360,21 @@ app.addEventListener("click", async (event) => {
 });
 app.addEventListener("change", async (event) => {
   const el = event.target as HTMLInputElement;
+  const cellEdit =
+    el.dataset.swimmer !== undefined ||
+    el.dataset.relay !== undefined ||
+    !!el.dataset.meet ||
+    el.id === "brand-name";
   try {
+    if (
+      cellEdit &&
+      el.type === "number" &&
+      !el.value.trim() &&
+      !["ageMin", "ageMax", "ageSumMin", "ageSumMax"].includes(
+        el.dataset.field ?? "",
+      )
+    )
+      throw Error("Enter a number; this field cannot be blank.");
     if (el.id === "json-file" || el.id === "csv-file") {
       const file = el.files?.[0];
       if (!file) return;
@@ -442,12 +457,67 @@ app.addEventListener("change", async (event) => {
           s.input.meet.laneOrder = [...LANE_ORDER[s.input.meet.lanes]];
       });
     else return;
-    render();
+    if (cellEdit) syncEditor(el);
+    else render();
   } catch (error) {
-    render();
-    notify((error as Error).message, true);
+    if (cellEdit) syncEditor(el);
+    else render();
+    notify(`Change not saved. ${(error as Error).message}`, true);
   }
 });
+// Preserve the actual focused DOM nodes: rebuilding a grid on blur loses Tab
+// navigation and can swallow the click that committed the edit.
+function syncEditor(el: HTMLInputElement) {
+  if (el.dataset.swimmer !== undefined) {
+    const s = state.input.swimmers[+el.dataset.swimmer];
+    el.value = el.dataset.time
+      ? formatTime(s.times[el.dataset.time])
+      : String(s[el.dataset.field as keyof typeof s]);
+    if (el.dataset.time)
+      el.classList.toggle("nt", s.times[el.dataset.time] === undefined);
+    const keys = [
+      ...document.querySelectorAll<HTMLInputElement>(
+        '[data-swimmer="0"][data-time]',
+      ),
+    ].map((e) => e.dataset.time!);
+    const missing = state.input.swimmers.filter((s) =>
+      keys.some((k) => s.times[k] === undefined),
+    ).length;
+    const metric = document.querySelector(
+      ".metrics article:nth-child(3) strong",
+    );
+    if (metric) metric.textContent = String(missing).padStart(2, "0");
+    el.closest("tr")
+      ?.querySelectorAll<HTMLInputElement>("input,select")
+      .forEach((input) => {
+        if (input.dataset.time)
+          input.setAttribute("aria-label", `${s.name} ${input.dataset.time}`);
+      });
+  } else if (el.dataset.relay !== undefined) {
+    const relay = state.input.relays[+el.dataset.relay];
+    el.value = String(relay[el.dataset.field as keyof typeof relay] ?? "");
+  } else if (el.dataset.meet) {
+    const keys = el.dataset.meet.split(".");
+    const obj =
+      keys.length === 2
+        ? (
+            state.input.meet as unknown as Record<
+              string,
+              Record<string, unknown>
+            >
+          )[keys[0]]
+        : (state.input.meet as unknown as Record<string, unknown>);
+    const value = obj[keys.at(-1)!];
+    el.value = Array.isArray(value) ? value.join(", ") : String(value);
+    const order = document.querySelector<HTMLInputElement>(
+      '[data-meet="laneOrder"]',
+    );
+    if (order) order.value = state.input.meet.laneOrder.join(", ");
+    document.querySelector(".subtitle")!.textContent = state.input.meet.name;
+    document.querySelector(".page-heading .eyebrow")!.textContent =
+      `PRACTICE MEET · ${state.input.meet.ageUpDate}`;
+  } else if (el.id === "brand-name") el.value = state.brand;
+}
 app.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target as HTMLFormElement;

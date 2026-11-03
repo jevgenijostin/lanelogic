@@ -1293,3 +1293,16 @@ footer button {
 .table-scroll {
   position: relative;
 }
+
+.session-track {
+  position: relative;
+}
+.booking-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #933d2f;
+  z-index: 1;
+  border-left: 2px dashed white;
+}

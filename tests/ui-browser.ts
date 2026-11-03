@@ -6,6 +6,7 @@ import { DISCLAIMER } from "../src/ui";
 import { validate } from "../src/validator";
 await mkdir("reports/screenshots", { recursive: true });
 const browser = await chromium.launch({ headless: true });
+const base = process.env.PREVIEW_URL ?? "http://127.0.0.1:4173";
 try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
@@ -17,10 +18,7 @@ try {
   const workerUrls: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   context.on("request", (r) => {
-    if (
-      /^https?:/.test(r.url()) &&
-      new URL(r.url()).origin !== "http://127.0.0.1:4173"
-    )
+    if (/^https?:/.test(r.url()) && new URL(r.url()).origin !== base)
       external.push(r.url());
   });
   page.on("worker", (w) => workerUrls.push(w.url()));
@@ -34,13 +32,11 @@ try {
   const saved = async (): Promise<AppState> =>
     page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
   const importBackup = async (text: string) => {
-    await page
-      .locator("#json-file")
-      .setInputFiles({
-        name: "meet.json",
-        mimeType: "application/json",
-        buffer: Buffer.from(text),
-      });
+    await page.locator("#json-file").setInputFiles({
+      name: "meet.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(text),
+    });
     await expect(page.locator("#notice")).toContainText(
       "imported and validated",
     );
@@ -54,7 +50,7 @@ try {
       disclaimerChecks++;
     }
   };
-  await page.goto("http://127.0.0.1:4173");
+  await page.goto(base);
   await expect(page.locator(".roster-table tbody tr")).toHaveCount(40);
   await page.screenshot({
     path: "reports/screenshots/roster.png",
@@ -83,6 +79,7 @@ try {
     const w = window as any;
     w.pings = [];
     w.solveStarted = performance.now();
+    w.lastPing = 0;
     w.pingTimer = setInterval(() => {
       const strip = document.querySelector<HTMLElement>(".solve-strip");
       if (strip && !strip.hidden) {
@@ -90,8 +87,10 @@ try {
         document.querySelector<HTMLButtonElement>("#ping")!.click();
         w.pings.push({
           latency: performance.now() - before,
+          interval: w.lastPing ? before - w.lastPing : 0,
           text: document.querySelector("#pong")!.textContent,
         });
+        w.lastPing = before;
       }
     }, 10);
   });
@@ -103,7 +102,11 @@ try {
   const duration = performance.now() - started;
   const pings = await page.evaluate(() => {
     clearInterval((window as any).pingTimer);
-    return (window as any).pings as { latency: number; text: string }[];
+    return (window as any).pings as {
+      latency: number;
+      interval: number;
+      text: string;
+    }[];
   });
   const solved = await saved();
   assert.equal(solved.input.swimmers.length, 40);
@@ -115,11 +118,13 @@ try {
   assert.ok(pings.every((p) => p.text.includes("during solve")));
   const maxPing = Math.max(...pings.map((p) => p.latency));
   assert.ok(maxPing < 100);
+  const maxInterval = Math.max(...pings.map((p) => p.interval));
+  assert.ok(maxInterval < 150, `Main-thread ping interval ${maxInterval} ms`);
   assert.equal(workerUrls.length, 1);
   assert.match(workerUrls[0], /assets\/worker-.*\.js/);
   assert.deepEqual(external, []);
   console.log(
-    `G11 PASS: built app; 40 swimmers / 6 relays / 12 teams; optimal + independent validator clean; ${duration.toFixed(1)} ms click-to-result including joint/sequential comparison; ${pings.length} in-solve UI pings, max ${maxPing.toFixed(2)} ms; ${workerUrls.length} bundled Worker; ${external.length} external requests`,
+    `G11 PASS: built app; 40 swimmers / 6 relays / 12 teams; optimal + independent validator clean; ${duration.toFixed(1)} ms click-to-result including joint/sequential comparison; ${pings.length} in-solve UI pings, max handler ${maxPing.toFixed(2)} ms / interval ${maxInterval.toFixed(2)} ms; ${workerUrls.length} bundled Worker; ${external.length} external requests`,
   );
   await expect(page.locator(".team-card")).toHaveCount(12);
   await page.screenshot({
@@ -208,42 +213,37 @@ try {
   // Editing, CSV failure atomicity, malformed backup rejection, and small-screen overflow.
   await nav(0);
   const beforeCSV = await saved();
-  await page
-    .locator("#csv-file")
-    .setInputFiles({
-      name: "bad.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from(
-        "id,name,sex,dob,individualEntries,free50\nx,Wrong,M,2010-01-01,0,bad\n",
-      ),
-    });
+  await page.locator("#csv-file").setInputFiles({
+    name: "bad.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "id,name,sex,dob,individualEntries,free50\nx,Wrong,M,2010-01-01,0,bad\n",
+    ),
+  });
   await expect(page.locator("#notice")).toContainText("Row 2");
   assert.deepEqual(await saved(), beforeCSV);
-  await page
-    .locator("#csv-file")
-    .setInputFiles({
-      name: "good.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from(
-        "id,name,sex,dob,individualEntries,free50\nx,New swimmer,F,2010-01-01,0,NT\n",
-      ),
-    });
+  await page.locator("#csv-file").setInputFiles({
+    name: "good.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "id,name,sex,dob,individualEntries,free50\nx,New swimmer,F,2010-01-01,0,NT\n",
+    ),
+  });
   await expect(page.locator(".roster-table tbody tr")).toHaveCount(1);
   assert.deepEqual((await saved()).input.swimmers[0].times, {});
   await page.locator('[data-time="free50"]').fill("28.45");
   await page.locator('[data-time="free50"]').press("Tab");
+  await expect(page.locator('[data-time="back50"]')).toBeFocused();
   assert.equal((await saved()).input.swimmers[0].times.free50, 2845);
   await page.locator('[data-time="free50"]').fill("NT");
   await page.locator('[data-time="free50"]').press("Tab");
   assert.deepEqual((await saved()).input.swimmers[0].times, {});
   const beforeBad = await saved();
-  await page
-    .locator("#json-file")
-    .setInputFiles({
-      name: "bad.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"version":99}'),
-    });
+  await page.locator("#json-file").setInputFiles({
+    name: "bad.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"version":99}'),
+  });
   await expect(page.locator("#notice")).toContainText("not imported");
   assert.deepEqual(await saved(), beforeBad);
   await importBackup(json);
@@ -260,10 +260,134 @@ try {
     path: "reports/screenshots/mobile.png",
     fullPage: true,
   });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page
+    .locator('[data-swimmer="0"][data-field="name"]')
+    .fill("Edited on blur");
+  // The click which commits a cell edit must still navigate.
+  await nav(1);
+  assert.equal((await saved()).input.swimmers[0].name, "Edited on blur");
+  await importBackup(json);
+  await nav(2);
+  const pinned = solved.solution!.teams[0];
+  const ri = solved.input.relays.findIndex((r) => r.id === pinned.team.relayId);
+  await page.locator(`[data-pin="${ri},${pinned.team.slot},0"]`).click();
+  assert.equal(
+    (await saved()).input.locks[0].swimmerId,
+    pinned.legs[0].swimmerId,
+  );
+  assert.equal((await saved()).solution, null);
+  await page.locator('[data-action="solve-all"]').click();
+  await expect(page.locator("#notice")).toContainText(/optimal.*12 teams/, {
+    timeout: 10000,
+  });
+  const afterPin = await saved();
+  assert.deepEqual(validate(afterPin.input, afterPin.solution!.teams), []);
+  assert.equal(
+    afterPin.solution!.teams.find(
+      (t) =>
+        t.team.relayId === pinned.team.relayId &&
+        t.team.slot === pinned.team.slot,
+    )!.legs[0].swimmerId,
+    pinned.legs[0].swimmerId,
+  );
+  await page.locator('[data-remove-lock="0"]').click();
+  await page
+    .locator('#lock-form [name="swimmer"]')
+    .selectOption(pinned.legs[0].swimmerId);
+  await page
+    .locator('#lock-form [name="team"]')
+    .selectOption(`${ri},${pinned.team.slot}`);
+  await page.locator('#lock-form [name="mode"]').selectOption("ban");
+  await page
+    .getByRole("button", { name: "Add constraint", exact: true })
+    .click();
+  assert.equal((await saved()).input.locks[0].mode, "ban");
+  assert.equal((await saved()).solution, null);
+  await page.locator('[data-action="solve-all"]').click();
+  await expect(page.locator("#notice")).toContainText(/optimal.*12 teams/, {
+    timeout: 10000,
+  });
+  const afterBan = await saved();
+  assert.deepEqual(validate(afterBan.input, afterBan.solution!.teams), []);
+  assert.notEqual(
+    afterBan.solution!.teams.find(
+      (t) =>
+        t.team.relayId === pinned.team.relayId &&
+        t.team.slot === pinned.team.slot,
+    )!.legs[0].swimmerId,
+    pinned.legs[0].swimmerId,
+  );
+  // Cancel deterministically immediately after posting real work; preserve existing results.
+  const beforeCancel = await saved();
+  await page.evaluate(() => {
+    document
+      .querySelector<HTMLButtonElement>('[data-action="solve-all"]')!
+      .click();
+    document
+      .querySelector<HTMLButtonElement>('[data-action="cancel"]')!
+      .click();
+  });
+  await expect(page.locator("#notice")).toContainText("cancelled");
+  assert.deepEqual(await saved(), beforeCancel);
+  // Overrun must be visible with a short same-day booking.
+  const short = JSON.parse(json);
+  short.input.meet.poolBooking.end = "18:01";
+  await importBackup(JSON.stringify(short));
+  await nav(4);
+  await expect(page.locator("#overrun")).toContainText("Overrun:");
+  await page.screenshot({
+    path: "reports/screenshots/overrun.png",
+    fullPage: true,
+  });
+  await nav(5);
+  await page.locator("summary").click();
+  await page.locator('[data-action="savings-demo"]').click();
+  await nav(2);
+  await page.locator('[data-action="solve-all"]').click();
+  await expect(page.locator("#savings")).toContainText("268.80 s saved");
+  const demo = await saved();
+  const conflict = structuredClone(demo);
+  conflict.solution = null;
+  conflict.comparison = null;
+  conflict.solvedRelays = [];
+  conflict.input.locks = ["s0", "s1"].map((swimmerId) => ({
+    swimmerId,
+    team: { relayId: "r0", slot: 0 },
+    leg: 0,
+    mode: "pin",
+  }));
+  await importBackup(JSON.stringify(conflict));
+  await page.locator('[data-action="solve-all"]').click();
+  await expect(page.locator("#notice")).toContainText("infeasible", {
+    timeout: 10000,
+  });
+  assert.equal((await saved()).solution!.teams.length, 0);
+  assert.ok((await saved()).solution!.diagnostics.includes("locks"));
+  demo.solution = null;
+  demo.comparison = null;
+  demo.solvedRelays = [];
+  demo.tier = "free";
+  await importBackup(JSON.stringify(demo));
+  await page.locator('[data-action="solve:0"]').click();
+  await expect(page.locator("#notice")).toContainText(/feasible.*1 teams/);
+  const accepted = (await saved()).solution!.teams;
+  await page.locator('[data-action="solve:1"]').click();
+  await expect(page.locator("#notice")).toContainText(/feasible.*2 teams/);
+  const sequential = await saved();
+  assert.deepEqual(
+    sequential.solution!.teams.filter((t) => t.team.relayId === "r0"),
+    accepted,
+  );
+  assert.deepEqual(validate(sequential.input, sequential.solution!.teams), []);
+  await expect(page.locator("#savings")).toHaveCount(0);
+  console.log(
+    "UI solve flows PASS: production savings banner = 268.80 s; conflicting pins yield infeasible + locks diagnostic; Free solves 2 relays sequentially with accepted first team unchanged and 0 validator violations",
+  );
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   console.log(
-    "UI browser PASS: all 6 screens at 1440px and 390px; CSV invalid-row atomic rejection + NT/time editing; malformed JSON preserved state; 0 page errors; 0 external requests throughout",
+    "UI browser PASS: all 6 screens at 1440px and 390px; CSV atomic rejection + NT/time editing; keyboard Tab and blur-click preserved; JSON rejection atomic; UI pins/bans independently validated; cancellation preserves results; overrun callout; 0 page errors; 0 external requests throughout",
   );
 } finally {
   await browser.close();

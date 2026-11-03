@@ -34,6 +34,12 @@ export function checkInput(p: Input) {
   if (!p.meet.name.trim() || p.swimmers.some((s) => !s.name.trim()))
     throw Error("Names cannot be empty");
   if (
+    p.swimmers.some((s) =>
+      Object.keys(s.times).some((k) => !/^(free|back|breast|fly)\d+$/.test(k)),
+    )
+  )
+    throw Error("Unknown stroke/distance time column");
+  if (
     ![4, 6, 8, 10].includes(p.meet.lanes) ||
     ![0, 2, 3].includes(p.meet.circleHeats)
   )
@@ -104,15 +110,44 @@ export function checkState(s: AppState) {
       ) ||
       !Array.isArray(s.solution.diagnostics) ||
       !s.solution.diagnostics.every((d) => typeof d === "string") ||
-      !Object.values(s.solution.stats).every(Number.isFinite)
+      ![
+        s.solution.stats.weight,
+        s.solution.stats.costCs,
+        s.solution.stats.tie,
+      ].every(Number.isSafeInteger)
     )
       throw Error("Invalid solution");
     if (s.solution.teams.some((t) => !s.solvedRelays.includes(t.team.relayId)))
       throw Error("Unexpected solved team");
     const errors = validate(validationInput(s), s.solution.teams);
-    if (s.solution.teams.length && errors.length)
+    if (
+      (s.solution.teams.length ||
+        ["optimal", "feasible"].includes(s.solution.status)) &&
+      errors.length
+    )
       throw Error(`Invalid saved lineup: ${errors.join(", ")}`);
-  }
+    if (
+      ["infeasible", "no_solution_found"].includes(s.solution.status) &&
+      s.solution.teams.length
+    )
+      throw Error("Non-feasible result cannot contain teams");
+    const weight = s.solution.teams.reduce(
+      (n, t) =>
+        n + s.input.relays.find((r) => r.id === t.team.relayId)!.priority,
+      0,
+    );
+    const cost = s.solution.teams.reduce(
+      (n, t) => n + t.legs.reduce((sum, l) => sum + l.cs, 0),
+      0,
+    );
+    if (s.solution.stats.weight !== weight || s.solution.stats.costCs !== cost)
+      throw Error("Saved objective does not match lineups");
+  } else if (
+    s.solution !== null ||
+    s.solvedRelays.length ||
+    s.comparison !== null
+  )
+    throw Error("Missing solution for saved results");
   if (
     s.comparison &&
     (![s.comparison.additionalTeams, s.comparison.additionalWeight].every(

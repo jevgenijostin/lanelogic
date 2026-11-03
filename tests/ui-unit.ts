@@ -79,6 +79,10 @@ for (const mutate of [
   (p: any) => (p.input.locks = [{ swimmerId: "missing" }]),
   (p: any) => (p.version = 2),
   (p: any) => (p.solution.teams[0].legs[0].cs = 1),
+  (p: any) => (p.solution.stats.costCs = 0),
+  (p: any) => (p.solution.status = "infeasible"),
+  (p: any) => (p.solution = null),
+  (p: any) => (p.input.swimmers[0].times.notAStroke = 100),
 ]) {
   const bad = structuredClone(joint);
   mutate(bad);
@@ -86,5 +90,5 @@ for (const mutate of [
 }
 checkState(second);
 console.log(
-  "UI state PASS: 2 sequential relays preserve accepted teams and caps; independent validator clean; Pro saves 26880 cs; JSON deep-equal; 6 malformed backups rejected",
+  "UI state PASS: 2 sequential relays preserve accepted teams and caps; independent validator clean; Pro saves 26880 cs; JSON deep-equal; 10 malformed backups rejected",
 );
