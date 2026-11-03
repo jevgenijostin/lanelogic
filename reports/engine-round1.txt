@@ -1,0 +1,175 @@
+LaneLogic — round-one engine handoff
+2026-11-03, Berlin (CET). Engine source commit: 6188617.
+
+VERDICT
+G0–G10 PASS. Engine-side round-one scope is complete. Full release is NOT claimed:
+G11–G14 and the six-screen product UI remain deferred under the dispatch.
+
+ENGINE PATH AND G0 TIMEBOX
+HiGHS 1.15.4, pinned in package.json and package-lock.json. Vite packages a local
+3,531.40 kB WASM asset and loads it in a module Web Worker. The feasible and
+infeasible production-browser smoke milestone was committed/pushed at 21:17 CET,
+well inside T0+90 minutes. The representative assignment model subsequently passed
+in the built preview. No fallback was necessary; no production DFS is shipped.
+Vite reports a node:module externalization warning from HiGHS's Node branch; the
+actual browser Worker path passed in Chromium with zero page errors.
+
+GATE TABLE (verbatim execution outputs follow below)
+G0   PASS  Production Worker: Optimal 87 ms; Infeasible 2 ms; representative
+           40 swimmers / 6 relays / 12 teams optimal in 195 ms.
+G1   PASS  20,000 cs round trips; required formats; 10 malformed inputs;
+           transactional CSV rejection with row-2/3 messages.
+G2   PASS  Clean lineup and 13 injected violations covering C1–C8, eligibility
+           (sex, age, NT), caps and reported totals.
+G3   PASS  500/500 oracle objectives/verdicts equal, 2,404 ms. All roster sizes
+           6–10 and 2–3 teams represented; 190 feasible, 310 infeasible;
+           feasible cases fielded 223 teams. Run before downstream feature gates.
+G4   PASS  2,000 fuzz instances, 27,865 ms; 758 feasible, 1,242 infeasible;
+           802 returned teams, zero independent-validator violations.
+G5   PASS  Pins/bans honored; conflicting pins infeasible; separate locks, caps,
+           age-band and eligibility fixtures identify the restoring relaxation.
+G6   PASS  Joint fields 2 vs sequential 1 in missing-specialist fixture.
+           Equal-coverage fixture: 8,220 vs 35,100 cs, savings 26,880 cs.
+           Built-browser banner asserts exactly "268.80 s saved".
+G7   PASS  Node 20/20 byte-identical JSON; browser 20 runs across each of two
+           Worker lifetimes (40 total) byte-identical, including a reload.
+G8   PASS  Forced timeS=0 => feasible; nodes=0 => no_solution_found.
+           Returned incumbent validates; neither limit is reported optimal.
+G9   PASS  10 hand fixtures (partial heats, circle, ties, NT, lane tables),
+           1,000 randomized seeding properties with no loss or lane collisions.
+G10  PASS  Expected 90 s / pessimistic 93 s hand calculation; monotonic event
+           addition; -1/0/+1 s boundary; NT requires explicit estimate.
+G11  DEFERRED  Representative Worker performance is measured under G0, but the
+               UI-ping and zero-external-network-request assertions are not run.
+G12  DEFERRED  JSON import/export and localStorage persistence not built.
+G13  DEFERRED  Tier flag and canUse feature gates not built.
+G14  DEFERRED  Heat-sheet, seeding and print views/disclaimer assertions not built.
+
+KNOWN LIMITS, INTERPRETATIONS AND DEVIATIONS
+- Model correctness only. No federation-compliance claim. Practice seeding —
+  not federation-compliant. This harness is not the CourtKit-density six-screen UI.
+- No hard HiGHS size ceiling is claimed. The representative fixture is a measured
+  supported example, not a universal runtime guarantee. Only Node and Chromium
+  were tested. Production UI should supply solve budgets and expose statuses.
+- Team/leg indexes are zero-based. Events containing any pin or ban retain slot
+  identity: unconditional fastest-A relabelling could violate C8. Unlocked events
+  are relabelled fastest-first and revalidated. stats.tie is the pre-relabel hash
+  objective; costCs is raw time, totalCs includes three split adjustments.
+- The independent oracle enumerates ordered four-swimmer assignments, keeps the
+  cheapest ordering for each member set and memoizes remaining subproblems. This
+  differs from an entirely naive enumeration for speed, but uses no solver/model
+  helpers, validator, MILP, or lower-bound pruning. Its bitmasks are test-only for
+  the specified small instances; it is not a second production engine.
+- Hash mod 10 can collide. Reproducibility is verified for fixed input ordering,
+  seed, one thread and pinned runtime, not a proof of a unique optimum or identity
+  across future solver/browser versions. Timing is excluded from solution JSON.
+- C4 is literal: already-over-cap individual entries make the instance infeasible.
+  At the cap, available relay capacity is zero. Without pins and with nonnegative
+  caps, empty fielding is feasible and can be optimal if nobody is eligible.
+- Sequential accepted teams are retained and consume capacity for later events.
+  It reports feasible, never whole-meet optimal. Savings require the same fielded
+  team slots; differing coverage is shown as team/weight difference, not seconds.
+- Relaxations identify single-family feasibility restoration, not an IIS/minimal
+  conflict set. Eligibility relaxes sex/mixed balance and missing times; age bands
+  relaxes both individual and sum ages. Synthetic diagnostic times are not returned.
+  Several simultaneous causes may require more than one relaxation.
+- Solver time budget spans three primary stages; JavaScript model construction
+  overhead is outside it. Node budgets are per stage. Each diagnostic re-solve has
+  its own budget. Limited output is validated and never labelled optimal.
+- Circle seeding implements both 2 and 3 heats (the data model allowed 2 but the
+  brief only illustrated 3). NT timelines require an explicit estimate. Booking
+  is same-day only. Expected/pessimistic factors are fixed at 1.0/1.05.
+- A G6 expected value was corrected during development: specialist assignment
+  gives 8,220 cs, not the initial hand estimate. Independent oracle reconfirmed it.
+  The PRNG was improved to cover all roster sizes and multi-slot events; the final
+  run records that distribution. No engine-freeze checkpoint has occurred yet.
+- No tier/license enforcement is present. Future tier flag is demonstration-only;
+  suggested EUR 50–80 per-club annual pricing is unvalidated.
+
+REMAINING BEFORE 03:15 BERLIN ENGINE FREEZE
+No known unmet G1–G10 engine gate or engine blocker. Preserve this tested baseline;
+if later integration exposes a gate failure, fix it and record a fresh gate run.
+Round two: six screens, roster/edit/import flows, meet setup, locks UI, per-team
+checks lists, persistence/export/import, tier gating, heat/print views, timeline
+display, rules/about; then G11–G14 and full release regression.
+
+CUTS AND FOLLOW-UP QUEUE
+1. Meet Manager / HY3 / CL2 import/export: top buyer-facing interoperability gap.
+2. No meet-points objective or federation compliance; no coupled schedule or
+   back-to-back fatigue optimization; no individual-event optimization.
+3. No real PDF library (print stylesheet later), license cryptography, season
+   history, backend/accounts or i18n.
+4. DeckSim queued first: locked primitive vocabulary, seeded replayable logs,
+   100% hand-checkable invariant suite before any 10k batch, reports worded
+   "under tested strategies".
+5. Snarewire queued as first backend night: boring but solid local HTTP/SQLite,
+   dashboard, retrying local webhook receiver, restart persistence. Doc-beacons
+   and public hosting explicitly remain follow-ups.
+6. FormPeak optimizer dropped. A fixed-preset FormSandbox would require a fresh
+   pitch, no personal fitting, and disclaimers on every screen; not queued.
+
+REPRODUCTION AND REPO STATE
+Node 24.17.0. npm ci; npx playwright install chromium; npm test; npm run build;
+npm run preview; in a second terminal npm run test:browser (port 4173).
+MIT license. main pushed directly as explicitly requested; no PR and no AI trailer.
+Pushed milestones: dbf4a0e scaffold; 2a60b46 production WASM gate;
+7ba6196 model/oracle; 6188617 remaining engine gates. This report and README are
+committed/pushed in the final documentation milestone.
+
+VERBATIM CAPTURED OUTPUTS
+
+--- npm test ---
+
+> lanelogic@0.1.0 test
+> tsx tests/gates.ts
+
+G3 progress 100/500
+G3 progress 200/500
+G3 progress 300/500
+G3 progress 400/500
+G3 progress 500/500
+G3 PASS: 500/500 oracle objectives and verdicts matched; swimmers 6–10, teams 2–3; 190 feasible / 310 infeasible / 223 fielded teams (2404 ms)
+G1 PASS: 20000 integer-cs round trips; 3 required formats; 10 malformed inputs; CSV valid and row-2/3 rejection
+G2 PASS: clean lineup; 13 injected violations caught (C1–C8, sex, age, NT, reporting)
+G4 progress 500/2000
+G4 progress 1000/2000
+G4 progress 1500/2000
+G4 progress 2000/2000
+G4 PASS: 2000 fuzz instances; 758 feasible, 1242 infeasible, 802 teams; 0 validator violations (27865 ms)
+G5 PASS: pin + ban honored; conflicting pins infeasible; locks/caps/age bands/eligibility relaxations identified
+Boundary checks PASS: C4 pre-existing over-cap is infeasible; empty meet optimal; split adjustment leaves objective unchanged
+G6 engine PASS: joint 2 teams vs sequential 1; equal-coverage fixture saves 26880 cs (268.8 s). Banner covered by browser gate
+G7 Node PASS: 20/20 byte-identical solution JSON
+G8 PASS: {"timeS":0} => feasible
+G8 PASS: {"nodes":0} => no_solution_found
+G9 PASS: 10 hand fixtures including partial-circle/2-circle/ties/NT/6+8 lanes; 1000 randomized size properties
+G10 PASS: expected 90 s / pessimistic 93 s; event monotonicity; -1/0/+1 s overrun boundaries; explicit NT estimate required
+
+--- npm run build ---
+
+> lanelogic@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+[plugin rolldown:vite-resolve] Module "node:module" has been externalized for browser compatibility, imported by "C:/Dev/personal/lanelogic/node_modules/highs/build/highs.mjs". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+✓ 5 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                      0.55 kB │ gzip:     0.35 kB
+dist/assets/worker-BW0Tvr3o.js     109.93 kB
+dist/assets/highs-CTQpMom3.wasm  3,531.40 kB │ gzip: 1,231.01 kB
+dist/assets/index-BHPwWMII.js        2.54 kB │ gzip:     1.32 kB
+
+✓ built in 144ms
+
+--- npm run test:browser ---
+
+> lanelogic@0.1.0 test:browser
+> tsx tests/browser.ts
+
+G0 Optimal: PASS (87 ms)
+G0 Infeasible: PASS (2 ms)
+G0 representative: PASS (40 swimmers, 6 relays, 12 teams; optimal; 195 ms)
+G7 Worker: PASS (20 runs x 2 Worker lifetimes, byte-identical solution JSON)
+G6 browser PASS: built harness banner shows exactly 268.80 s saved; independent checks PASS
