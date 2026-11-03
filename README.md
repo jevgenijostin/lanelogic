@@ -20,7 +20,7 @@ For manual use, run `npm run build`, then `npm run preview` in a separate termin
 
 ## Using the workspace
 
-1. The first visit opens a clearly labelled 40-swimmer practice sample. Edit roster cells or replace the roster with CSV. Times accept `28.45`, `1:02.34`, or `NT`; Tab moves between cells. The expandable CSV panel includes a downloadable template, sample reset and empty-workspace action.
+1. The first visit opens a 40-swimmer practice sample. Edit roster cells or replace the roster with CSV. Times accept `28.45`, `1:02.34`, or `NT`; Tab moves between cells. The expandable CSV panel includes a downloadable template, sample reset and empty-workspace action.
 2. Set relay definitions, team counts, priorities, age bounds, entry caps, lane order, booking window and heat/event gaps in Meet setup. Pessimism is fixed at 1.05 to match the verified engine.
 3. Solve each relay in Free, in your chosen order. Accepted earlier teams consume swimmer capacity and remain unchanged. Use Clear accepted lineups to start again. Pro's whole-meet solve replaces the sequence with a joint allocation and computes a priority-ordered sequential comparison in the Worker.
 4. Pin a returned leg or add a pin/ban using the constraint form. Editing inputs or constraints clears old results. Cards show raw leg splits, adjusted team totals, solver status and the independent checks. Infeasible results show diagnostic constraint families; cancellation keeps previously accepted results.
@@ -79,3 +79,4 @@ All six UI screens and G11–G14 are implemented on top of the existing engine. 
 2. No meet-points objective, federation compliance, coupled scheduling, fatigue spacing, or individual-event optimization.
 3. Print stylesheet shipped; no PDF library, license cryptography, season history, backend/accounts, or i18n.
 4. Product queue: DeckSim, then Snarewire (local HTTP/SQLite/webhooks; document beacons and public hosting later). FormPeak optimizer dropped.
+

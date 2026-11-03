@@ -7,14 +7,14 @@ G3 progress 200/500
 G3 progress 300/500
 G3 progress 400/500
 G3 progress 500/500
-G3 PASS: 500/500 oracle objectives and verdicts matched; swimmers 6–10, teams 2–3; 190 feasible / 310 infeasible / 223 fielded teams (2404 ms)
+G3 PASS: 500/500 oracle objectives and verdicts matched; swimmers 6–10, teams 2–3; 190 feasible / 310 infeasible / 223 fielded teams (2419 ms)
 G1 PASS: 20000 integer-cs round trips; 3 required formats; 10 malformed inputs; CSV valid and row-2/3 rejection
 G2 PASS: clean lineup; 13 injected violations caught (C1–C8, sex, age, NT, reporting)
 G4 progress 500/2000
 G4 progress 1000/2000
 G4 progress 1500/2000
 G4 progress 2000/2000
-G4 PASS: 2000 fuzz instances; 758 feasible, 1242 infeasible, 802 teams; 0 validator violations (27865 ms)
+G4 PASS: 2000 fuzz instances; 758 feasible, 1242 infeasible, 802 teams; 0 validator violations (27173 ms)
 G5 PASS: pin + ban honored; conflicting pins infeasible; locks/caps/age bands/eligibility relaxations identified
 Boundary checks PASS: C4 pre-existing over-cap is infeasible; empty meet optimal; split adjustment leaves objective unchanged
 G6 engine PASS: joint 2 teams vs sequential 1; equal-coverage fixture saves 26880 cs (268.8 s). Banner covered by browser gate

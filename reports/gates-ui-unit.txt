@@ -1,0 +1,6 @@
+
+> lanelogic@0.1.0 test:ui
+> tsx tests/ui-unit.ts
+
+G13 PASS: 18/18 feature/tier combinations; 4 forbidden action invocations rejected; 0 Worker/print side effects; Pro print allowed
+UI state PASS: 2 sequential relays preserve accepted teams and caps; independent validator clean; Pro saves 26880 cs; JSON deep-equal; 10 malformed backups rejected

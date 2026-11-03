@@ -1,0 +1,250 @@
+LaneLogic — UI round / final gate report
+Recorded: 2026-11-03 23:49 Europe/Berlin (CET)
+Tested implementation: d5cd17408eb1a3d6c268973dbf85905f6d06c380
+Engine baseline: 3f6dbf0c11be5f22f76cce51807b1eaf8c2a75aa
+Environment: Windows, Node 24.17.0, Playwright 1.64.1 Chromium, Vite 8.3.5.
+
+VERIFIED STARTING POINT
+The repository had exactly these five commits, and origin/main pointed to 3f6dbf0:
+  3f6dbf0 Record engine gate results
+  6188617 Complete engine gates
+  7ba6196 Verify relay model against oracle
+  2a60b46 Verify production WASM worker
+  dbf4a0e Scaffold engine lab
+The existing reports/gates-node.txt and reports/gates-browser.txt showed G0–G10
+passing with numbers. src/worker.ts loaded pinned highs@1.15.4 directly and Vite
+emitted its local WASM asset. No fallback was present or introduced.
+
+IMPLEMENTATION / CHECKPOINT
+All six screens are complete: editable roster and atomic CSV import; meet setup;
+relay cards with raw splits, adjusted totals, statuses, independent checks and
+pins/bans; Pro heat sheets and print; Pro booking timeline with overrun marker;
+About/rules with C1–C8, assumptions and scope limits.
+CourtKit's compact tables, bordered cards, action bars, responsive layouts, local
+backups and print treatment were inspected as the component precedent. LaneLogic
+uses a navy/teal workspace, visible local-data messaging and no external assets.
+
+Free solves one relay at a time. Earlier accepted teams remain fixed and consume
+capacity in subsequent solves. Pro solves jointly and compares with the existing
+priority-ordered sequential engine. Savings are shown in seconds only for equal
+coverage/team slots. Changes to inputs clear stale solutions. Cancellation keeps
+the previously accepted state. Export/import includes inputs, pins/bans, results,
+tier and club branding. Saved results are independently revalidated on import.
+
+No engine source changes: git diff against 3f6dbf0 is empty for domain.ts,
+model.ts, parsing.ts, seeding.ts, sequential.ts, solver.ts, timeline.ts,
+validator.ts and worker.ts. The original engine harness remains at /engine.html.
+
+Incremental commits pushed directly to origin/main as explicitly requested:
+  9019dc8 Build relay planning UI
+  d5cd174 Harden UI interactions and verification
+This report and its raw artifacts are committed separately after those pushes.
+No AI-attribution trailers were added.
+
+The complete suite passed before 23:49 Berlin, ahead of the ~05:15 UI freeze.
+No required UI work or gate failures remain. Feature work is complete; the final
+report commit changes documentation and evidence only. There is no reason to
+keep a session alive waiting for the clock checkpoint.
+
+GATE SUMMARY (raw output follows below)
+Gate | Verdict | Actual measurement / assertion
+G0   | PASS | HiGHS WASM: Optimal 73 ms; Infeasible 2 ms; representative 200 ms
+G1   | PASS | 20,000 integer-cs round trips; 3 formats; 10 malformed inputs; CSV rows
+G2   | PASS | Clean lineup plus 13 injected validator violations caught
+G3   | PASS | 500/500 oracle matches; 190 feasible / 310 infeasible; 2,419 ms
+G4   | PASS | 2,000 fuzz instances; 802 teams; 0 validator violations; 27,173 ms
+G5   | PASS | Pins/bans, conflicting locks and 4 relaxation families checked
+G6   | PASS | Joint 2 vs sequential 1; equal-coverage demo saves 26,880 cs;
+     |      | both engine-lab and real production UI banner show 268.80 s
+G7   | PASS | 20/20 Node JSON matches; 20 runs x 2 Worker lifetimes byte-identical
+G8   | PASS | timeS=0 -> feasible; nodes=0 -> no_solution_found, no false optimum
+G9   | PASS | 10 hand fixtures + 1,000 random seeding properties
+G10  | PASS | Expected 90 s / pessimistic 93 s; -1/0/+1 s overrun boundaries
+G11  | PASS | Built UI: 40 swimmers, 6 relays, 2 teams each; 857.8 ms to result;
+     |      | 43 pings DURING solve, max handler 0.30 ms / interval 12.00 ms;
+     |      | 1 bundled Worker; 0 external requests; 0 lineup validator violations
+G12  | PASS | 20,108-byte actual JSON download -> file import -> deep equality;
+     |      | localStorage + reload deep-equal, including all 12 team lineups
+G13  | PASS | 18/18 feature/tier combinations; 4 Free action invocations rejected;
+     |      | 0 forbidden Worker/print side effects; Pro print callback allowed
+G14  | PASS | 48 DOM disclaimer assertions; 7/7 physical PDF pages checked
+
+G11 measures the production button action including cold Worker startup, joint
+solve, sequential comparison and UI completion; Playwright timing also includes
+its actionability/polling overhead. Pings click the real UI response button on a
+10 ms interval while the actual solve strip is active. No solver mock is used.
+Network observation covers the full browser suite, including first load, and
+records zero HTTP requests outside the preview origin. WASM is served locally.
+
+G14 covers Free/Pro seeding controls; locked, empty and populated heat sheets;
+circle settings 0/2/3; print preview and every printed event; and the Free native
+browser-print fallback. Runtime assertions guard each seeding/heat/print render.
+The UI uses the exact requested text: Practice seeding - not federation-compliant
+Print was also rendered to a 7-page PDF and every page's extracted text checked.
+The native print dialog is replaced only in the click test, not the print content
+or stylesheet. Chromium PDF rendering exercises the actual print media rules.
+
+ADDITIONAL UI REGRESSIONS / FIXES
+- Rejected CSV rows and malformed JSON leave state unchanged.
+- NT editing adds/removes integer-centisecond times correctly.
+- All six screens fit 1440px and 390px viewports with no document overflow.
+- Keyboard Tab and clicks which commit edits retain their expected behavior.
+- Pins and bans submitted through the UI are honored and independently checked.
+- Contradictory pins return infeasible plus the locks diagnostic.
+- Two Free relay solves preserve the first accepted team and satisfy the caps.
+- Cancellation preserves saved results; shortened booking shows an overrun.
+- 10 malformed backup cases rejected, including altered objective/status/splits.
+- 0 browser page errors during the entire suite.
+
+An initial supplementary mobile test caught overflow from an absolutely positioned
+screen-reader table label; its containing scroll area is now positioned. A later
+interaction test caught a generic click rerender swallowing constraint-form submit;
+submit buttons now reach the form handler. Grid edits no longer rebuild focused
+DOM nodes on blur. These were fixed before the final all-gates rerun.
+
+PROCESS / REPRODUCTION
+  npm ci
+  npx playwright install chromium
+  npm test
+  npm run test:ui
+  npm run verify:browser
+
+verify:browser builds first, starts Vite preview as a hidden managed child on a
+free local port, polls readiness with a deadline, runs both browser suites with
+90-second per-suite deadlines, writes raw reports, and stops preview in finally.
+It does not wait for a foreground Vite server to exit. The initial manual smoke
+preview was also started as a hidden background process, never blocking exec.
+
+The final run executed engine Node gates, UI unit gates, production build, engine
+browser gates, and UI browser gates sequentially to avoid load skewing timing.
+Raw files: gates-node.txt, gates-ui-unit.txt, build.txt, gates-browser.txt,
+gates-ui-browser.txt, gates-print.txt. Screenshots cover all screens, mobile and
+overrun. heat-sheets.pdf is the print artifact. The PDF text check used the
+already-installed PyMuPDF 1.27.2.3 as a supplemental inspection, not an app/runtime
+dependency. To repeat: open reports/heat-sheets.pdf with fitz and assert the exact
+UI disclaimer is in page.get_text() for every page.
+
+MONETIZATION / HONEST LIMITS
+Free: roster, setup, sequential single-relay solve, basic lineups.
+Pro: whole-meet solve, savings, heat sheets, circle settings, timeline, branded print.
+THIS IS A DEMO TIER FLAG AND FEATURE GATE, NOT REAL LICENSE ENFORCEMENT.
+No payments, accounts or license cryptography. Product guards are tested at the
+action boundary, but do not prevent someone from modifying browser code, changing
+the tier flag, or using the separate diagnostic engine lab.
+
+- HiGHS 1.15.4 is the shipped engine. No fallback. The representative size is a
+  measured case, not a promised maximum. UI engine budget: 8 seconds per solve;
+  total Worker deadline: 30 seconds including comparison/diagnostics. Larger or
+  difficult instances can time out. Only actual solver status is displayed.
+- Practice rules check the specified mathematical model, not federation rules.
+- Heat sheets use this club's solved relay teams. The fixed spec allows 1–3 teams
+  per event and 4–10 lanes, so UI events currently fit into one heat. Circle
+  settings are supported but do not affect those single-heat cases. The engine's
+  multi-heat/circle behavior is covered by G9. No opponent-entry UI was added.
+- Timeline includes fielded relay heats only. Pessimism is fixed at 1.05 to match
+  the frozen engine; final heat/event gaps count. No individual events, warm-ups,
+  breaks, fatigue-spacing or coupled scheduling. Same-day booking only.
+- UI input guards require nonnegative start adjustment smaller than recorded
+  splits. Import revalidates lineups and objective totals but is not a certificate
+  that an imported optimal-status label is mathematically proven.
+- localStorage is browser/origin specific. Storage-denied edits stay in memory
+  with a visible export warning. Export backups; no multi-tab live merging.
+- Print stylesheet only. Saving PDF uses the browser; no PDF library in the app.
+
+EXPLICIT CUTS / FOLLOW-UP QUEUE
+1. Meet Manager / HY3 / CL2 import/export: largest buyer-facing interoperability gap.
+2. No meet-points objective or federation compliance claims.
+3. No coupled schedule optimization, back-to-back fatigue spacing or individual
+   event optimization.
+4. No PDF library, season history, license cryptography, backend/accounts or i18n.
+5. Product queue: DeckSim, then Snarewire (local HTTP/SQLite/webhooks; document
+   beacons/public hosting later). FormPeak optimizer remains dropped.
+
+VERBATIM OUTPUTS
+
+--- reports/gates-node.txt ---
+
+
+> lanelogic@0.1.0 test
+> tsx tests/gates.ts
+
+G3 progress 100/500
+G3 progress 200/500
+G3 progress 300/500
+G3 progress 400/500
+G3 progress 500/500
+G3 PASS: 500/500 oracle objectives and verdicts matched; swimmers 6–10, teams 2–3; 190 feasible / 310 infeasible / 223 fielded teams (2419 ms)
+G1 PASS: 20000 integer-cs round trips; 3 required formats; 10 malformed inputs; CSV valid and row-2/3 rejection
+G2 PASS: clean lineup; 13 injected violations caught (C1–C8, sex, age, NT, reporting)
+G4 progress 500/2000
+G4 progress 1000/2000
+G4 progress 1500/2000
+G4 progress 2000/2000
+G4 PASS: 2000 fuzz instances; 758 feasible, 1242 infeasible, 802 teams; 0 validator violations (27173 ms)
+G5 PASS: pin + ban honored; conflicting pins infeasible; locks/caps/age bands/eligibility relaxations identified
+Boundary checks PASS: C4 pre-existing over-cap is infeasible; empty meet optimal; split adjustment leaves objective unchanged
+G6 engine PASS: joint 2 teams vs sequential 1; equal-coverage fixture saves 26880 cs (268.8 s). Banner covered by browser gate
+G7 Node PASS: 20/20 byte-identical solution JSON
+G8 PASS: {"timeS":0} => feasible
+G8 PASS: {"nodes":0} => no_solution_found
+G9 PASS: 10 hand fixtures including partial-circle/2-circle/ties/NT/6+8 lanes; 1000 randomized size properties
+G10 PASS: expected 90 s / pessimistic 93 s; event monotonicity; -1/0/+1 s overrun boundaries; explicit NT estimate required
+
+
+--- reports/gates-browser.txt ---
+
+G0 Optimal: PASS (73 ms)
+G0 Infeasible: PASS (2 ms)
+G0 representative: PASS (40 swimmers, 6 relays, 12 teams; optimal; 200 ms)
+G7 Worker: PASS (20 runs x 2 Worker lifetimes, byte-identical solution JSON)
+G6 browser PASS: built harness banner shows exactly 268.80 s saved; independent checks PASS
+
+
+--- reports/gates-ui-unit.txt ---
+
+
+> lanelogic@0.1.0 test:ui
+> tsx tests/ui-unit.ts
+
+G13 PASS: 18/18 feature/tier combinations; 4 forbidden action invocations rejected; 0 Worker/print side effects; Pro print allowed
+UI state PASS: 2 sequential relays preserve accepted teams and caps; independent validator clean; Pro saves 26880 cs; JSON deep-equal; 10 malformed backups rejected
+
+
+--- reports/gates-ui-browser.txt ---
+
+G11 PASS: built app; 40 swimmers / 6 relays / 12 teams; optimal + independent validator clean; 857.8 ms click-to-result including joint/sequential comparison; 43 in-solve UI pings, max handler 0.30 ms / interval 12.00 ms; 1 bundled Worker; 0 external requests
+G12 PASS: 20108-byte downloaded JSON imported through file control, deep-equal to original 40-swimmer state including 12 lineups; localStorage + reload deep-equal
+G14 PASS: 48 disclaimer assertions across free/pro seeding, locked/empty/populated heat sheets, circle 0/2/3 settings, print preview, each printed event and Free browser-print fallback; print CSS + PDF rendered
+UI solve flows PASS: production savings banner = 268.80 s; conflicting pins yield infeasible + locks diagnostic; Free solves 2 relays sequentially with accepted first team unchanged and 0 validator violations
+UI browser PASS: all 6 screens at 1440px and 390px; CSV atomic rejection + NT/time editing; keyboard Tab and blur-click preserved; JSON rejection atomic; UI pins/bans independently validated; cancellation preserves results; overrun callout; 0 page errors; 0 external requests throughout
+
+
+--- reports/gates-print.txt ---
+
+PDF G14 supplement PASS: 7/7 physical PDF pages contain exact disclaimer; 91491 bytes; extracted with PyMuPDF 1.27.2.3
+
+
+--- reports/build.txt ---
+
+
+> lanelogic@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+[plugin rolldown:vite-resolve] Module "node:module" has been externalized for browser compatibility, imported by "C:/Dev/personal/lanelogic/node_modules/highs/build/highs.mjs". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin rolldown:vite-resolve] Module "node:module" has been externalized for browser compatibility, imported by "C:/Dev/personal/lanelogic/node_modules/highs/build/highs.mjs". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+✓ 21 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                      0.53 kB │ gzip:     0.33 kB
+dist/engine.html                     0.62 kB │ gzip:     0.38 kB
+dist/assets/worker-BW0Tvr3o.js     109.93 kB
+dist/assets/highs-CTQpMom3.wasm  3,531.40 kB │ gzip: 1,231.01 kB
+dist/assets/app-BgYzLAI0.css        16.23 kB │ gzip:     4.63 kB
+dist/assets/engine-DkhKcc8f.js       1.23 kB │ gzip:     0.65 kB
+dist/assets/demo-CFhg1m2Y.js         1.35 kB │ gzip:     0.78 kB
+dist/assets/app-ORjuDkXO.js         45.70 kB │ gzip:    16.15 kB
+
+✓ built in 186ms
+

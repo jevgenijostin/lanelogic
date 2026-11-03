@@ -1,9 +1,5 @@
-
-> lanelogic@0.1.0 test:browser
-> tsx tests/browser.ts
-
-G0 Optimal: PASS (87 ms)
+G0 Optimal: PASS (73 ms)
 G0 Infeasible: PASS (2 ms)
-G0 representative: PASS (40 swimmers, 6 relays, 12 teams; optimal; 195 ms)
+G0 representative: PASS (40 swimmers, 6 relays, 12 teams; optimal; 200 ms)
 G7 Worker: PASS (20 runs x 2 Worker lifetimes, byte-identical solution JSON)
 G6 browser PASS: built harness banner shows exactly 268.80 s saved; independent checks PASS

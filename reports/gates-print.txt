@@ -1,0 +1,1 @@
+PDF G14 supplement PASS: 7/7 physical PDF pages contain exact disclaimer; 91491 bytes; extracted with PyMuPDF 1.27.2.3

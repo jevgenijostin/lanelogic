@@ -1,0 +1,5 @@
+G11 PASS: built app; 40 swimmers / 6 relays / 12 teams; optimal + independent validator clean; 857.8 ms click-to-result including joint/sequential comparison; 43 in-solve UI pings, max handler 0.30 ms / interval 12.00 ms; 1 bundled Worker; 0 external requests
+G12 PASS: 20108-byte downloaded JSON imported through file control, deep-equal to original 40-swimmer state including 12 lineups; localStorage + reload deep-equal
+G14 PASS: 48 disclaimer assertions across free/pro seeding, locked/empty/populated heat sheets, circle 0/2/3 settings, print preview, each printed event and Free browser-print fallback; print CSS + PDF rendered
+UI solve flows PASS: production savings banner = 268.80 s; conflicting pins yield infeasible + locks diagnostic; Free solves 2 relays sequentially with accepted first team unchanged and 0 validator violations
+UI browser PASS: all 6 screens at 1440px and 390px; CSV atomic rejection + NT/time editing; keyboard Tab and blur-click preserved; JSON rejection atomic; UI pins/bans independently validated; cancellation preserves results; overrun callout; 0 page errors; 0 external requests throughout
