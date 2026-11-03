@@ -1,4 +1,98 @@
-import type {Input} from '../src/domain';
-export function fixture(n=8):Input {return {meet:{name:'Practice meet',ageUpDate:'2026-06-01',relayLimitPerSwimmer:3,startSplitAdjustCs:30,lanes:6,laneOrder:[3,4,2,5,1,6],circleHeats:0,minSlowestHeat:3,poolBooking:{start:'18:00',end:'20:00'},timing:{gapBetweenHeatsS:20,gapBetweenEventsS:60,pessimism:1.05}},swimmers:Array.from({length:n},(_,i)=>({id:`s${i}`,name:`Swimmer ${i}`,sex:i%2?'F':'M',dob:'2010-01-01',individualEntries:0,times:{free50:2500+i*30,back50:3000+i*20,breast50:3500+i*40,fly50:2900+i*25}})),relays:[{id:'r0',name:'Mixed free',kind:'free',legDist:50,gender:'X',teams:2,priority:1}],locks:[]};}
-export function random(seed:number):Input {let state=seed;const rand=(n:number)=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return Math.floor(state/4294967296*n);};const p=fixture(6+rand(5));p.meet.relayLimitPerSwimmer=1+rand(3);p.relays=Array.from({length:2+rand(2)},(_,i)=>({id:`r${i}`,name:`Relay ${i}`,kind:rand(2)?'free':'medley',legDist:50,gender:(['M','F','X'] as const)[rand(3)],teams:1,priority:1+rand(9),...(rand(4)===0?{ageMin:14,ageMax:17}:{}),...(rand(4)===0?{ageSumMin:60,ageSumMax:68}:{})}));p.swimmers.forEach(s=>{s.dob=`${2008+rand(5)}-01-01`;s.individualEntries=rand(3);for(const k of Object.keys(s.times)){s.times[k]=2000+rand(2000);if(rand(8)===0)delete s.times[k];}});for(let i=0,n=rand(4);i<n;i++)p.locks.push({swimmerId:p.swimmers[rand(p.swimmers.length)].id,team:{relayId:p.relays[rand(p.relays.length)].id,slot:0},leg:rand(4),mode:rand(2)?'pin':'ban'});return p;}
-export function representative():Input {const p=fixture(40);p.meet.relayLimitPerSwimmer=3;p.relays=Array.from({length:6},(_,i)=>({id:`r${i}`,name:`Relay ${i}`,kind:i%2?'medley':'free',legDist:50,gender:(['M','F','X'] as const)[i%3],teams:2,priority:1+i}));return p;}
+import type { Input } from "../src/domain";
+export function fixture(n = 8): Input {
+  return {
+    meet: {
+      name: "Practice meet",
+      ageUpDate: "2026-06-01",
+      relayLimitPerSwimmer: 3,
+      startSplitAdjustCs: 30,
+      lanes: 6,
+      laneOrder: [3, 4, 2, 5, 1, 6],
+      circleHeats: 0,
+      minSlowestHeat: 3,
+      poolBooking: { start: "18:00", end: "20:00" },
+      timing: { gapBetweenHeatsS: 20, gapBetweenEventsS: 60, pessimism: 1.05 },
+    },
+    swimmers: Array.from({ length: n }, (_, i) => ({
+      id: `s${i}`,
+      name: `Swimmer ${i}`,
+      sex: i % 2 ? "F" : "M",
+      dob: "2010-01-01",
+      individualEntries: 0,
+      times: {
+        free50: 2500 + i * 30,
+        back50: 3000 + i * 20,
+        breast50: 3500 + i * 40,
+        fly50: 2900 + i * 25,
+      },
+    })),
+    relays: [
+      {
+        id: "r0",
+        name: "Mixed free",
+        kind: "free",
+        legDist: 50,
+        gender: "X",
+        teams: 2,
+        priority: 1,
+      },
+    ],
+    locks: [],
+  };
+}
+export function random(seed: number): Input {
+  let state = Math.imul(seed, 2654435761) >>> 0;
+  const rand = (n: number) => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return Math.floor((state / 4294967296) * n);
+  };
+  const p = fixture(6 + rand(5));
+  p.meet.relayLimitPerSwimmer = 1 + rand(3);
+  p.relays = Array.from({ length: 2 + rand(2) }, (_, i) => ({
+    id: `r${i}`,
+    name: `Relay ${i}`,
+    kind: rand(2) ? "free" : "medley",
+    legDist: 50,
+    gender: (["M", "F", "X"] as const)[rand(3)],
+    teams: 1,
+    priority: 1 + rand(9),
+    ...(rand(4) === 0 ? { ageMin: 14, ageMax: 17 } : {}),
+    ...(rand(4) === 0 ? { ageSumMin: 60, ageSumMax: 68 } : {}),
+  }));
+  if (seed % 4 === 0) {
+    const count = p.relays.length as 2 | 3;
+    p.relays = [{ ...p.relays[0], teams: count }];
+  }
+  p.swimmers.forEach((s) => {
+    s.dob = `${2008 + rand(5)}-01-01`;
+    s.individualEntries = rand(3);
+    for (const k of Object.keys(s.times)) {
+      s.times[k] = 2000 + rand(2000);
+      if (rand(8) === 0) delete s.times[k];
+    }
+  });
+  for (let i = 0, n = rand(4); i < n; i++) {
+    const relay = p.relays[rand(p.relays.length)];
+    p.locks.push({
+      swimmerId: p.swimmers[rand(p.swimmers.length)].id,
+      team: { relayId: relay.id, slot: rand(relay.teams) },
+      leg: rand(4),
+      mode: rand(2) ? "pin" : "ban",
+    });
+  }
+  return p;
+}
+export function representative(): Input {
+  const p = fixture(40);
+  p.meet.relayLimitPerSwimmer = 3;
+  p.relays = Array.from({ length: 6 }, (_, i) => ({
+    id: `r${i}`,
+    name: `Relay ${i}`,
+    kind: i % 2 ? "medley" : "free",
+    legDist: 50,
+    gender: (["M", "F", "X"] as const)[i % 3],
+    teams: 2,
+    priority: 1 + i,
+  }));
+  return p;
+}
